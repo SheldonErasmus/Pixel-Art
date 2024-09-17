@@ -1,4 +1,5 @@
 import * as common from './common.mjs'
+import { Player , Board} from './common.mjs';
 
 const canvasId = "app";
 
@@ -27,8 +28,33 @@ const CELL_HEIGHT = app.height / BOARD_ROWS
 
 const colourState= ["#181818","cyan", "magenta", "yellow"];
 
+let myId: undefined | number = undefined;
+const players = new Array<Player>();
+
+const ws = new WebSocket(`ws://localhost:${common.SERVER_PORT}`);
+
+ws.addEventListener('open', () => 
+{
+    console.log('Connected to server');
+});
+
+ws.addEventListener('close', () => 
+{
+    console.log('Disconnected from server');
+});
+
+ws.addEventListener("error", (event) => {
+    console.log("Websocket error", event)
+});
+
+ws.addEventListener('message', (e) => 
+{
+    console.log(`Received message from server: ${e.data}`);
+});
+
+// =========================================================
+
 // Create board
-type Board = Array<Array<number>>;
 const myBoard: Board = [];
 
 for (let r = 0; r < BOARD_ROWS; r++)
@@ -52,6 +78,15 @@ function render(ctx: CanvasRenderingContext2D , myBoard: Board)
     }
 }
 
+const frame = (timestamp: number) =>
+{
+    render(ctx, myBoard);
+
+    window.requestAnimationFrame(frame)
+}
+window.requestAnimationFrame(frame);
+
+
 app.addEventListener("mousemove", (e) => {
     if (e.buttons == 1)
     {    
@@ -60,17 +95,21 @@ app.addEventListener("mousemove", (e) => {
         const y = e.clientY - rect.top;
         const col = Math.floor(x / CELL_WIDTH);
         const row = Math.floor(y / CELL_HEIGHT);
-        
+        let state;
         if (e.ctrlKey == true)
         {
             myBoard[row][col] = 0;
+            state = 0;
         }
         else
         {
             myBoard[row][col] = (col + row) % 3 + 1;
+            state  = (col + row) % 3 + 1;
         }
-        
-        render(ctx, myBoard);
+
+        ws.send(JSON.stringify({
+            state: state
+        }));
     }
 }); 
 
@@ -81,18 +120,21 @@ app.addEventListener("mousedown", (e) => {
     const y = e.clientY - rect.top;
     const col = Math.floor(x / CELL_WIDTH);
     const row = Math.floor(y / CELL_HEIGHT);
-    
+    let state;
     if (e.ctrlKey == true)
     {
         myBoard[row][col] = 0;
+        state = 0;
     }
     else
     {
         myBoard[row][col] = (col + row) % 3 + 1;
-    }
-    
-    render(ctx, myBoard);
-    
+        state  = (col + row) % 3 + 1;
+    } 
+
+    ws.send(JSON.stringify({
+        state: state
+    }));
 }); 
 
 resetBut.addEventListener("click", (e) => 
@@ -104,34 +146,4 @@ resetBut.addEventListener("click", (e) =>
             myBoard[r][c] = 0;
         }
     }
-
-    render(ctx, myBoard);
 })
-
-render(ctx, myBoard);
-
-
-// =========================================================
-
-const ws = new WebSocket(`ws://localhost:${common.SERVER_PORT}`);
-
-ws.addEventListener('open', () => 
-{
-    console.log('Connected to server');
-  
-    ws.send('Hello, server!');
-});
-  
-ws.addEventListener('message', (e) => 
-{
-    console.log(`Received message from server: ${e.data}`);
-});
-  
-ws.addEventListener('close', () => 
-{
-    console.log('Disconnected from server');
-});
-
-
-
-

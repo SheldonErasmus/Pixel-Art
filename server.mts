@@ -9,9 +9,11 @@ wss.on('connection', (ws: WebSocket) =>
 {
     console.log('New client connected');
 
-    ws.on('message', (message: string) => {
-        console.log(`Received message: ${message}`);
-        ws.send(`Server received your message: ${message}`);
+    ws.addEventListener('message', (message) => {
+        let data = JSON.parse(message.data.toString())
+        console.log(`Received message: ${data.state}`);
+        
+        
     });
 
     ws.on('close', () => {
